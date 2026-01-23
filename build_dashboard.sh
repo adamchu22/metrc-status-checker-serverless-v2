@@ -53,7 +53,7 @@ echo "Generating snapshot..."
 timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 snapshot_file="snapshot.tmp.json"
 
-echo "{"
+echo "{" > $snapshot_file
 echo "  \"timestamp\": \"$timestamp\"," >> $snapshot_file
 echo "  \"data\": [" >> $snapshot_file
 
@@ -64,8 +64,10 @@ for state in "${states[@]}"; do
     prod_url="https://api-${state}.metrc.com"
     prod_data=$(check_endpoint "$prod_url" "prod")
     
-    echo "    { \"state\": \"${state^^}\", $prod_data }" >> $snapshot_file
-    echo "Checked ${state^^}..."
+    # Use tr for uppercase to avoid "bad substitution" in some shells
+    state_upper=$(echo "$state" | tr '[:lower:]' '[:upper:]')
+    echo "    { \"state\": \"$state_upper\", $prod_data }" >> $snapshot_file
+    echo "Checked $state_upper..."
 done
 
 echo "  ]" >> $snapshot_file
@@ -77,11 +79,11 @@ HISTORY_FILE="status.json"
 
 if [ ! -f "$HISTORY_FILE" ]; then
     echo "Creating new history file..."
-    jq -n --slurpfile new $snapshot_file '[$new[0]]' > $HISTORY_FILE
+    # Wrap the snapshot in an array [ ]
+    jq -s '.' $snapshot_file > $HISTORY_FILE
 else
     echo "Appending to history..."
-    # . + $new adds the new snapshot array to the existing one. 
-    # .[-240:] takes the last 240 items.
+    # Combine existing array with new object, then take last 240
     jq --slurpfile new $snapshot_file '. + $new | .[-240:]' $HISTORY_FILE > status.tmp && mv status.tmp $HISTORY_FILE
 fi
 

@@ -1,0 +1,277 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Metrc Status Dashboard</title>
+    <style>
+        :root {
+            --bg-color: #f8f9fa;
+            --text-color: #212529;
+            --card-bg: #ffffff;
+            --border-color: #dee2e6;
+            
+            --success: #28a745;
+            --warning: #ffc107;
+            --danger: #dc3545;
+            --info: #17a2b8;
+            --secondary: #6c757d;
+        }
+
+        body {
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Helvetica Neue", Arial, sans-serif;
+            background-color: var(--bg-color);
+            color: var(--text-color);
+            margin: 0;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1400px;
+            margin: 0 auto;
+        }
+
+        header {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        h1 { margin-bottom: 10px; font-weight: 300; }
+        .last-updated { font-size: 0.9rem; color: #6c757d; }
+
+        .controls {
+            text-align: center;
+            margin-bottom: 20px;
+        }
+
+        .grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(350px, 1fr));
+            gap: 20px;
+        }
+
+        .card {
+            background: var(--card-bg);
+            border: 1px solid var(--border-color);
+            border-radius: 8px;
+            padding: 20px;
+            box-shadow: 0 2px 4px rgba(0,0,0,0.05);
+        }
+
+        .state-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            border-bottom: 2px solid var(--border-color);
+            padding-bottom: 5px;
+        }
+
+        .state-title {
+            font-size: 1.5rem;
+            font-weight: bold;
+            text-transform: uppercase;
+        }
+
+        .current-status {
+            display: flex;
+            gap: 10px;
+        }
+
+        .status-dot {
+            height: 12px;
+            width: 12px;
+            border-radius: 50%;
+            display: inline-block;
+        }
+
+        .history-section {
+            margin-top: 15px;
+        }
+        
+        .history-label {
+            font-size: 0.75rem;
+            text-transform: uppercase;
+            color: #6c757d;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+
+        .timeline {
+            display: flex;
+            height: 20px;
+            gap: 2px;
+            background: #e9ecef;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .time-slice {
+            flex: 1;
+            height: 100%;
+            cursor: pointer;
+            transition: opacity 0.2s;
+        }
+        .time-slice:hover { opacity: 0.7; }
+
+        /* Colors */
+        .bg-success { background-color: var(--success); }
+        .bg-warning { background-color: var(--warning); }
+        .bg-danger { background-color: var(--danger); }
+        .bg-info { background-color: var(--info); }
+        .bg-secondary { background-color: var(--secondary); }
+        
+        .text-success { color: var(--success); }
+        .text-warning { color: var(--warning); }
+        .text-danger { color: var(--danger); }
+
+        .btn {
+            padding: 8px 16px;
+            background-color: #007bff;
+            color: white;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        .btn:disabled { background-color: #ccc; }
+
+        .tooltip {
+            visibility: hidden;
+            position: absolute;
+            background-color: #333;
+            color: #fff;
+            text-align: center;
+            padding: 5px 10px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            z-index: 10;
+            pointer-events: none;
+        }
+
+    </style>
+</head>
+<body>
+
+<div class="container">
+    <header>
+        <h1>Metrc API Status & History</h1>
+        <div id="lastUpdated" class="last-updated">Loading...</div>
+    </header>
+
+    <div class="controls">
+        <button id="refreshBtn" class="btn" onclick="refreshData()">Refresh Data</button>
+    </div>
+
+    <div id="dashboard" class="grid"></div>
+</div>
+
+<div id="tooltip" class="tooltip"></div>
+
+<script>
+    const tooltip = document.getElementById('tooltip');
+
+    async function loadData() {
+        try {
+            // Fetch current status (now returns { timestamp, data: [...] })
+            const statusRes = await fetch('/api/status');
+            const statusJson = await statusRes.json();
+            
+            // Fetch history for timeline
+            const historyRes = await fetch('/api/history');
+            const historyJson = await historyRes.json();
+
+            renderDashboard(statusJson.data, historyJson);
+            
+            const date = new Date(statusJson.timestamp);
+            document.getElementById('lastUpdated').innerText = `Last Check: ${date.toLocaleString()}`;
+
+        } catch (error) {
+            console.error("Failed to load data", error);
+        }
+    }
+
+    async function refreshData() {
+        const btn = document.getElementById('refreshBtn');
+        btn.disabled = true;
+        btn.innerText = "Refreshing...";
+        
+        await fetch('/api/refresh', { method: 'POST' });
+        
+        // Wait a moment for check to complete/save
+        setTimeout(() => {
+            loadData();
+            btn.disabled = false;
+            btn.innerText = "Refresh Data";
+        }, 2000);
+    }
+
+    function renderDashboard(currentData, historyData) {
+        const dashboard = document.getElementById('dashboard');
+        dashboard.innerHTML = '';
+
+        currentData.forEach(item => {
+            const card = document.createElement('div');
+            card.className = 'card';
+            
+            const mainDot = `<span class="status-dot bg-${item.main.statusClass}" title="Main: ${item.main.statusClass}"></span>`;
+
+            // Build Timeline HTML
+            // Filter history for this specific state
+            const stateHistory = historyData.map(snapshot => {
+                const stateData = snapshot.states[item.state];
+                // Handle legacy data where 'main' might not exist or structure differed
+                const mainStatus = stateData?.main?.statusClass || 'secondary';
+                return {
+                    time: snapshot.timestamp,
+                    main: mainStatus
+                };
+            });
+
+            // We want to show last 30 entries (or more depending on width)
+            // For now, let's just show all available history slices
+            const timelineHTML = stateHistory.map(h => {
+                let combinedClass = `bg-${h.main}`;
+                
+                return `<div class="time-slice ${combinedClass}" 
+                             onmouseover="showTooltip(event, '${h.time}', '${h.main}')" 
+                             onmouseout="hideTooltip()"></div>`;
+            }).join('');
+
+            card.innerHTML = `
+                <div class="state-header">
+                    <div class="state-title">${item.state}</div>
+                    <div class="current-status">
+                        <div style="font-size:0.8rem; display:flex; align-items:center; gap:5px;">
+                            Status ${mainDot}
+                        </div>
+                    </div>
+                </div>
+                
+                <div class="history-section">
+                    <div class="history-label">30-Day History (Hourly)</div>
+                    <div class="timeline">
+                        ${timelineHTML}
+                    </div>
+                </div>
+            `;
+            dashboard.appendChild(card);
+        });
+    }
+
+    function showTooltip(e, time, main) {
+        const date = new Date(time).toLocaleString();
+        tooltip.innerHTML = `<strong>${date}</strong><br>Status: ${main}`;
+        tooltip.style.visibility = 'visible';
+        tooltip.style.left = e.pageX + 10 + 'px';
+        tooltip.style.top = e.pageY + 10 + 'px';
+    }
+
+    function hideTooltip() {
+        tooltip.style.visibility = 'hidden';
+    }
+
+    loadData();
+</script>
+
+</body>
+</html>

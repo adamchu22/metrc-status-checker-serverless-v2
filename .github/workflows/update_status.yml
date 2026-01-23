@@ -1,0 +1,28 @@
+name: Update Metrc Status
+
+on:
+  schedule:
+    - cron: '*/30 * * * *' # Run every 30 minutes
+  workflow_dispatch:       # Button to run manually
+
+permissions:
+  contents: write
+
+jobs:
+  check-status:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout Code
+        uses: actions/checkout@v3
+
+      - name: Run Status Script
+        run: |
+          chmod +x generate_status.sh
+          ./generate_status.sh
+
+      - name: Commit Results
+        run: |
+          git config --global user.name "StatusBot"
+          git config --global user.email "bot@noreply.github.com"
+          git add status.json
+          git diff --quiet && git diff --staged --quiet || (git commit -m "Update status [skip ci]"; git push)

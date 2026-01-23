@@ -1,0 +1,159 @@
+<!-- 
+  WEBFLOW INTEGRATION SNIPPET
+  ---------------------------
+  1. Add an "Embed" element to your Webflow page where you want the dashboard to appear.
+  2. Paste this entire code block into the Embed element.
+-->
+
+<style>
+    :root {
+        --bg-color: #1a1b1e;
+        --card-bg: #25262b;
+        --text-main: #e9ecef;
+        --text-muted: #909296;
+        --success: #40c057;
+        --warning: #fab005;
+        --error: #fa5252;
+        --border: #2c2e33;
+    }
+
+    .metrc-grid {
+        display: grid;
+        grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+        gap: 20px;
+        font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    }
+
+    .metrc-card {
+        background: var(--card-bg);
+        border: 1px solid var(--border);
+        border-radius: 12px;
+        padding: 20px;
+        color: var(--text-main);
+        box-shadow: 0 4px 6px rgba(0,0,0,0.1);
+    }
+    
+    .metrc-card-header {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        border-bottom: 1px solid var(--border);
+        padding-bottom: 10px;
+        margin-bottom: 15px;
+    }
+
+    .metrc-state-badge {
+        font-size: 1.5rem;
+        font-weight: 800;
+        color: white;
+        background: #339af0;
+        padding: 5px 12px;
+        border-radius: 8px;
+    }
+
+    .metrc-env-row {
+        display: flex;
+        justify-content: space-between;
+        align-items: center;
+        margin-bottom: 12px;
+        font-size: 0.95rem;
+    }
+
+    .metrc-env-label { color: var(--text-muted); font-weight: 500; }
+
+    .metrc-status-pill {
+        padding: 4px 12px;
+        border-radius: 20px;
+        font-size: 0.8rem;
+        font-weight: bold;
+        text-transform: uppercase;
+        color: #1a1b1e;
+    }
+
+    /* Status Colors */
+    .s-ONLINE { background-color: var(--success); }
+    .s-SECURED { background-color: var(--warning); }
+    .s-UNREACHABLE { background-color: var(--error); color: white; }
+    .s-ERROR { background-color: var(--error); color: white; }
+    
+    .metrc-history-row {
+        margin-top: 15px;
+        padding-top: 10px;
+        border-top: 1px solid var(--border);
+    }
+    .metrc-history-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; }
+    .metrc-history-dots { display: flex; gap: 2px; height: 8px; }
+    .metrc-dot { flex: 1; border-radius: 1px; opacity: 0.8; }
+    
+    .bg-ONLINE { background-color: var(--success); }
+    .bg-SECURED { background-color: var(--warning); }
+    .bg-UNREACHABLE { background-color: var(--error); }
+    .bg-ERROR { background-color: var(--error); }
+    
+    #metrc-last-updated {
+        margin-bottom: 20px;
+        color: var(--text-muted);
+        font-size: 0.9rem;
+        text-align: center;
+    }
+</style>
+
+<div id="metrc-last-updated">Checking status...</div>
+<div id="metrc-dashboard" class="metrc-grid"></div>
+
+<script>
+    // URL to the JSON file hosted on GitHub Pages (V2)
+    const STATUS_URL = 'https://adamchu22.github.io/metrc-status-checker-serverless-v2/status.json';
+
+    async function loadMetrcStatus() {
+        try {
+            const response = await fetch(STATUS_URL);
+            const history = await response.json();
+            
+            // Get the latest snapshot (last item in array)
+            const latest = history[history.length - 1];
+            
+            const grid = document.getElementById('metrc-dashboard');
+            
+            if (latest) {
+                const date = new Date(latest.timestamp);
+                document.getElementById('metrc-last-updated').innerText = `Last Updated: ${date.toLocaleString()}`;
+                
+                latest.data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'metrc-card';
+                    
+                    // Build History Dots
+                    const stateHistoryDots = history.map(snapshot => {
+                        const stateRecord = snapshot.data.find(r => r.state === item.state);
+                        const status = stateRecord ? stateRecord.prod_status : 'UNKNOWN';
+                        return `<div class="metrc-dot bg-${status}" title="${new Date(snapshot.timestamp).toLocaleString()}: ${status}"></div>`;
+                    }).join('');
+
+                    card.innerHTML = `
+                        <div class="metrc-card-header">
+                            <div class="metrc-state-badge">${item.state}</div>
+                        </div>
+                        
+                        <div class="metrc-env-row">
+                            <span class="metrc-env-label">Production Status</span>
+                            <span class="metrc-status-pill s-${item.prod_status}">${item.prod_status}</span>
+                        </div>
+                        
+                        <div class="metrc-history-row">
+                            <div class="metrc-history-label">30-Day History</div>
+                            <div class="metrc-history-dots">${stateHistoryDots}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
+
+        } catch (error) {
+            document.getElementById('metrc-last-updated').innerText = "Status unavailable";
+            console.error("Failed to load Metrc status:", error);
+        }
+    }
+
+    loadMetrcStatus();
+</script>

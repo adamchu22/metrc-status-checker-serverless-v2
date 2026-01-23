@@ -90,12 +90,26 @@
             text-transform: uppercase;
             color: #1a1b1e;
         }
+        
+        .history-row {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+        .history-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; }
+        .history-dots { display: flex; gap: 2px; height: 8px; }
+        .dot { flex: 1; border-radius: 1px; opacity: 0.8; }
 
         /* Status Colors */
         .s-ONLINE { background-color: var(--success); }
-        .s-SECURED { background-color: var(--warning); } /* 401/403 is technically up */
+        .s-SECURED { background-color: var(--warning); }
         .s-UNREACHABLE { background-color: var(--error); color: white; }
         .s-ERROR { background-color: var(--error); color: white; }
+        
+        .bg-ONLINE { background-color: var(--success); }
+        .bg-SECURED { background-color: var(--warning); }
+        .bg-UNREACHABLE { background-color: var(--error); }
+        .bg-ERROR { background-color: var(--error); }
 
     </style>
 </head>
@@ -115,31 +129,43 @@
     async function loadStatus() {
         try {
             const response = await fetch('status.json');
-            const data = await response.json();
+            const history = await response.json();
             
+            const latest = history[history.length - 1];
             const grid = document.getElementById('dashboard');
             
-            // Set timestamp from first record
-            if (data.length > 0) {
-                const date = new Date(data[0].timestamp);
+            if (latest) {
+                const date = new Date(latest.timestamp);
                 document.getElementById('last-updated').innerText = `Last Updated: ${date.toLocaleString()}`;
-            }
-
-            data.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-header">
-                        <div class="state-badge">${item.state}</div>
-                    </div>
+                
+                latest.data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
                     
-                    <div class="env-row">
-                        <span class="env-label">Production Status</span>
-                        <span class="status-pill s-${item.prod_status}">${item.prod_status}</span>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+                    const stateHistoryDots = history.map(snapshot => {
+                        const stateRecord = snapshot.data.find(r => r.state === item.state);
+                        const status = stateRecord ? stateRecord.prod_status : 'UNKNOWN';
+                        return `<div class="dot bg-${status}" title="${new Date(snapshot.timestamp).toLocaleString()}: ${status}"></div>`;
+                    }).join('');
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="state-badge">${item.state}</div>
+                        </div>
+                        
+                        <div class="env-row">
+                            <span class="env-label">Production Status</span>
+                            <span class="status-pill s-${item.prod_status}">${item.prod_status}</span>
+                        </div>
+                        
+                        <div class="history-row">
+                            <div class="history-label">30-Day History (8x Daily)</div>
+                            <div class="history-dots">${stateHistoryDots}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
 
         } catch (error) {
             document.getElementById('last-updated').innerText = "Failed to load status.json";

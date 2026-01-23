@@ -31,7 +31,7 @@ check_endpoint() {
     local url=$1
     local type=$2 # "prod"
     
-    # 5 second timeout, capture HTTP code, use User-Agent to avoid bot blocking
+    # 5 second timeout, capture HTTP code, use User-Agent
     code=$(curl -s -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -o /dev/null -w '%{http_code}' --connect-timeout 5 "$url")
     
     # Determine status string
@@ -48,33 +48,49 @@ check_endpoint() {
     echo "\"${type}_code\": \"$code\", \"${type}_status\": \"$status\""
 }
 
-# Start JSON Output
-echo "[" > status.json
+# 1. Generate the NEW Snapshot
+echo "Generating snapshot..."
 timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+snapshot_file="snapshot.tmp.json"
+
+echo "{"
+echo "  \"timestamp\": \"$timestamp\"," >> $snapshot_file
+echo "  \"data\": [" >> $snapshot_file
+
 first=true
-
-# Loop through states
 for state in "${states[@]}"; do
-    if [ "$first" = true ]; then first=false; else echo "," >> status.json; fi
+    if [ "$first" = true ]; then first=false; else echo "," >> $snapshot_file; fi
     
-    # Define URL
     prod_url="https://api-${state}.metrc.com"
-
-    # Check environment
     prod_data=$(check_endpoint "$prod_url" "prod")
-
-    # Write JSON Object
-    echo "  { \"state\": \"${state^^}\", $prod_data, \"timestamp\": \"$timestamp\" }" >> status.json
     
+    echo "    { \"state\": \"${state^^}\", $prod_data }" >> $snapshot_file
     echo "Checked ${state^^}..."
 done
 
-echo "]" >> status.json
-echo "✅ status.json generated successfully."
+echo "  ]" >> $snapshot_file
+echo "}" >> $snapshot_file
+
+# 2. Append to History (status.json)
+# We use jq to append the new snapshot to the list and keep only the last 240 records (30 days of 3-hour checks)
+HISTORY_FILE="status.json"
+
+if [ ! -f "$HISTORY_FILE" ]; then
+    echo "Creating new history file..."
+    jq -n --slurpfile new $snapshot_file '[$new[0]]' > $HISTORY_FILE
+else
+    echo "Appending to history..."
+    # . + $new adds the new snapshot array to the existing one. 
+    # .[-240:] takes the last 240 items.
+    jq --slurpfile new $snapshot_file '. + $new | .[-240:]' $HISTORY_FILE > status.tmp && mv status.tmp $HISTORY_FILE
+fi
+
+rm $snapshot_file
+echo "✅ status.json updated successfully."
 EOF
 
 chmod +x generate_status.sh
-echo "   - Created generate_status.sh"
+echo "   - Created generate_status.sh (History Enabled)"
 
 
 # 2. Create the Frontend (The UI)
@@ -172,12 +188,26 @@ cat << 'EOF' > index.html
             text-transform: uppercase;
             color: #1a1b1e;
         }
+        
+        .history-row {
+            margin-top: 15px;
+            padding-top: 10px;
+            border-top: 1px solid var(--border);
+        }
+        .history-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; }
+        .history-dots { display: flex; gap: 2px; height: 8px; }
+        .dot { flex: 1; border-radius: 1px; opacity: 0.8; }
 
         /* Status Colors */
         .s-ONLINE { background-color: var(--success); }
-        .s-SECURED { background-color: var(--warning); } /* 401/403 is technically up */
+        .s-SECURED { background-color: var(--warning); }
         .s-UNREACHABLE { background-color: var(--error); color: white; }
         .s-ERROR { background-color: var(--error); color: white; }
+        
+        .bg-ONLINE { background-color: var(--success); }
+        .bg-SECURED { background-color: var(--warning); }
+        .bg-UNREACHABLE { background-color: var(--error); }
+        .bg-ERROR { background-color: var(--error); }
 
     </style>
 </head>
@@ -197,31 +227,43 @@ cat << 'EOF' > index.html
     async function loadStatus() {
         try {
             const response = await fetch('status.json');
-            const data = await response.json();
+            const history = await response.json();
             
+            const latest = history[history.length - 1];
             const grid = document.getElementById('dashboard');
             
-            // Set timestamp from first record
-            if (data.length > 0) {
-                const date = new Date(data[0].timestamp);
+            if (latest) {
+                const date = new Date(latest.timestamp);
                 document.getElementById('last-updated').innerText = `Last Updated: ${date.toLocaleString()}`;
-            }
-
-            data.forEach(item => {
-                const card = document.createElement('div');
-                card.className = 'card';
-                card.innerHTML = `
-                    <div class="card-header">
-                        <div class="state-badge">${item.state}</div>
-                    </div>
+                
+                latest.data.forEach(item => {
+                    const card = document.createElement('div');
+                    card.className = 'card';
                     
-                    <div class="env-row">
-                        <span class="env-label">Production Status</span>
-                        <span class="status-pill s-${item.prod_status}">${item.prod_status}</span>
-                    </div>
-                `;
-                grid.appendChild(card);
-            });
+                    const stateHistoryDots = history.map(snapshot => {
+                        const stateRecord = snapshot.data.find(r => r.state === item.state);
+                        const status = stateRecord ? stateRecord.prod_status : 'UNKNOWN';
+                        return `<div class="dot bg-${status}" title="${new Date(snapshot.timestamp).toLocaleString()}: ${status}"></div>`;
+                    }).join('');
+
+                    card.innerHTML = `
+                        <div class="card-header">
+                            <div class="state-badge">${item.state}</div>
+                        </div>
+                        
+                        <div class="env-row">
+                            <span class="env-label">Production Status</span>
+                            <span class="status-pill s-${item.prod_status}">${item.prod_status}</span>
+                        </div>
+                        
+                        <div class="history-row">
+                            <div class="history-label">30-Day History (8x Daily)</div>
+                            <div class="history-dots">${stateHistoryDots}</div>
+                        </div>
+                    `;
+                    grid.appendChild(card);
+                });
+            }
 
         } catch (error) {
             document.getElementById('last-updated').innerText = "Failed to load status.json";
@@ -235,7 +277,7 @@ cat << 'EOF' > index.html
 </body>
 </html>
 EOF
-echo "   - Created index.html (Dark Mode UI)"
+echo "   - Created index.html (History Supported)"
 
 
 # 3. Create GitHub Actions Workflow
@@ -246,7 +288,7 @@ name: Update Metrc Status
 
 on:
   schedule:
-    - cron: '*/30 * * * *' # Run every 30 minutes
+    - cron: '0 */3 * * *' # Run every 3 hours (8 times a day)
   workflow_dispatch:       # Button to run manually
 
 permissions:

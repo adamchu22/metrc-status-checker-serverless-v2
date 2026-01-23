@@ -13,7 +13,7 @@ check_endpoint() {
     local url=$1
     local type=$2 # "prod"
     
-    # 5 second timeout, capture HTTP code, use User-Agent to avoid bot blocking
+    # 5 second timeout, capture HTTP code, use User-Agent
     code=$(curl -s -H "User-Agent: Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36" -o /dev/null -w '%{http_code}' --connect-timeout 5 "$url")
     
     # Determine status string
@@ -30,26 +30,42 @@ check_endpoint() {
     echo "\"${type}_code\": \"$code\", \"${type}_status\": \"$status\""
 }
 
-# Start JSON Output
-echo "[" > status.json
+# 1. Generate the NEW Snapshot
+echo "Generating snapshot..."
 timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
+snapshot_file="snapshot.tmp.json"
+
+echo "{"
+echo "  \"timestamp\": \"$timestamp\"," >> $snapshot_file
+echo "  \"data\": [" >> $snapshot_file
+
 first=true
-
-# Loop through states
 for state in "${states[@]}"; do
-    if [ "$first" = true ]; then first=false; else echo "," >> status.json; fi
+    if [ "$first" = true ]; then first=false; else echo "," >> $snapshot_file; fi
     
-    # Define URL
     prod_url="https://api-${state}.metrc.com"
-
-    # Check environment
     prod_data=$(check_endpoint "$prod_url" "prod")
-
-    # Write JSON Object
-    echo "  { \"state\": \"${state^^}\", $prod_data, \"timestamp\": \"$timestamp\" }" >> status.json
     
+    echo "    { \"state\": \"${state^^}\", $prod_data }" >> $snapshot_file
     echo "Checked ${state^^}..."
 done
 
-echo "]" >> status.json
-echo "✅ status.json generated successfully."
+echo "  ]" >> $snapshot_file
+echo "}" >> $snapshot_file
+
+# 2. Append to History (status.json)
+# We use jq to append the new snapshot to the list and keep only the last 240 records (30 days of 3-hour checks)
+HISTORY_FILE="status.json"
+
+if [ ! -f "$HISTORY_FILE" ]; then
+    echo "Creating new history file..."
+    jq -n --slurpfile new $snapshot_file '[$new[0]]' > $HISTORY_FILE
+else
+    echo "Appending to history..."
+    # . + $new adds the new snapshot array to the existing one. 
+    # .[-240:] takes the last 240 items.
+    jq --slurpfile new $snapshot_file '. + $new | .[-240:]' $HISTORY_FILE > status.tmp && mv status.tmp $HISTORY_FILE
+fi
+
+rm $snapshot_file
+echo "✅ status.json updated successfully."

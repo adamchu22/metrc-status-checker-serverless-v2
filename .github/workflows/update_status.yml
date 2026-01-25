@@ -19,6 +19,13 @@ jobs:
         run: |
           chmod +x generate_status.sh
           ./generate_status.sh
+      - name: Debug Status Output
+        run: |
+          echo "UTC time: $(date -u)"
+          echo "status.json bytes:"
+          wc -c status.json
+          echo "status.json last timestamp:"
+          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('status.json','utf8'));console.log(d.length?d[d.length-1].timestamp:'(empty)')"
 
       - name: Commit Results
         run: |

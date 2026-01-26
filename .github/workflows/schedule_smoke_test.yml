@@ -2,13 +2,27 @@ name: Schedule Smoke Test
 
 on:
   schedule:
-    - cron: "*/5 * * * *"
+    - cron: "*/4 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
 
 jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - name: Prove schedule fired
+      - uses: actions/checkout@v4
+
+      - name: Write heartbeat
         run: |
-          echo "scheduled run fired"
-          echo "UTC time: $(date -u)"
+          date -u +"%Y-%m-%dT%H:%M:%SZ" > heartbeat.txt
+          cat heartbeat.txt
+
+      - name: Commit heartbeat
+        run: |
+          git config user.name "StatusBot"
+          git config user.email "bot@noreply.github.com"
+          git add heartbeat.txt
+          git commit -m "heartbeat" || exit 0
+          git push

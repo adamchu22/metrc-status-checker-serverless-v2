@@ -1,0 +1,14 @@
+name: Schedule Smoke Test
+
+on:
+  schedule:
+    - cron: "*/5 * * * *"
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Prove schedule fired
+        run: |
+          echo "scheduled run fired"
+          echo "UTC time: $(date -u)"

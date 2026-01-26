@@ -2,7 +2,7 @@ name: Update Metrc Status
 
 on:
   schedule:
-    - cron: "*/15 * * * *"   # Run every 5 minutes
+    - cron: "*/15 * * * *"   # Run every 15 minutes
   workflow_dispatch:       # Button to run manually
 
 permissions:
@@ -13,7 +13,7 @@ jobs:
     runs-on: ubuntu-latest
     steps:
       - name: Checkout Code
-        uses: actions/checkout@v3
+        uses: actions/checkout@v4
 
       - name: Run Status Script
         run: |
@@ -22,10 +22,25 @@ jobs:
       - name: Debug Status Output
         run: |
           echo "UTC time: $(date -u)"
-          echo "status.json bytes:"
-          wc -c status.json
-          echo "status.json last timestamp:"
-          node -e "const fs=require('fs');const d=JSON.parse(fs.readFileSync('status.json','utf8'));console.log(d.length?d[d.length-1].timestamp:'(empty)')"
+          if [ -f status.json ]; then
+            echo "status.json bytes: $(wc -c < status.json)"
+            echo "status.json last timestamp:"
+            node -e "
+              try {
+                const fs=require('fs');
+                const d=JSON.parse(fs.readFileSync('status.json','utf8'));
+                if (Array.isArray(d) && d.length > 0) {
+                  console.log(d[d.length-1].timestamp || '(no timestamp)');
+                } else {
+                  console.log('(empty or invalid array)');
+                }
+              } catch (e) {
+                console.log('(error parsing json: ' + e.message + ')');
+              }
+            "
+          else
+            echo "status.json not found"
+          fi
 
       - name: Commit Results
         run: |

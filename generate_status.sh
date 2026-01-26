@@ -1,4 +1,5 @@
 #!/bin/bash
+set -e # Exit on error
 
 # Define the states to monitor
 states=(
@@ -56,18 +57,16 @@ echo "  ]" >> $snapshot_file
 echo "}" >> $snapshot_file
 
 # 2. Append to History (status.json)
-# We use jq to append the new snapshot to the list and keep only the last 240 records (30 days of 3-hour checks)
 HISTORY_FILE="status.json"
 
-if [ ! -f "$HISTORY_FILE" ]; then
+if [ ! -f "$HISTORY_FILE" ] || [ ! -s "$HISTORY_FILE" ]; then
     echo "Creating new history file..."
-    # Wrap the snapshot in an array [ ]
     jq -s '.' $snapshot_file > $HISTORY_FILE
 else
     echo "Appending to history..."
-    # Combine existing array with new object, then take last 240
-    jq --slurpfile new $snapshot_file '. + $new | .[-240:]' $HISTORY_FILE > status.tmp && mv status.tmp $HISTORY_FILE
+    # Robustly append and keep last 240
+    jq --slurpfile new $snapshot_file 'if type == "array" then . else [] end + $new | .[-240:]' $HISTORY_FILE > status.tmp && mv status.tmp $HISTORY_FILE
 fi
 
-rm $snapshot_file
+rm -f $snapshot_file
 echo "✅ status.json updated successfully."

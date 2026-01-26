@@ -2,7 +2,7 @@ name: Update Metrc Status
 
 on:
   schedule:
-    - cron: '0 */3 * * *' # Run every 3 hours (8 times a day)
+    - cron: "*/5 * * * *"   # Run every 5 minutes
   workflow_dispatch:       # Button to run manually
 
 permissions:

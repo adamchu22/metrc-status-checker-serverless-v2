@@ -33,7 +33,7 @@ echo "Fetching user reports..."
 reports_json="{ \"count\": 0, \"states\": [] }"
 
 if [ -n "$REPORTS_CSV_URL" ]; then
-    curl -s -o reports.csv "$REPORTS_CSV_URL" || true
+    curl -sL -o reports.csv "$REPORTS_CSV_URL" || true
     
     if [ -f reports.csv ]; then
         # Parse CSV with Node.js to count last 3 hours

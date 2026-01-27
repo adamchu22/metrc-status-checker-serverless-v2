@@ -75,8 +75,16 @@ if [ -n "$REPORTS_CSV_URL" ]; then
                     if (cols.length < 2) return;
                     
                     const tsStr = cols[0].replace(/"/g, ""); 
-                    const reportDate = new Date(tsStr);
+                    // Google Sheets CSV timestamp is usually in Local Time (e.g. PST).
+                    // The server is UTC. We need to normalize.
+                    // If we assume the sheet is PST (UTC-8), we need to add 8 hours to the parsed time to get UTC.
+                    // Example: 16:51 PST -> 00:51 UTC (+1 day)
                     
+                    let reportDate = new Date(tsStr);
+                    // Add 8 hours (approx for PST) to align with UTC server time
+                    reportDate.setHours(reportDate.getHours() + 8); 
+                    
+                    // Allow a buffer (e.g., look back 3 hours from NOW)
                     if (!isNaN(reportDate) && reportDate > threeHoursAgo) {
                         count++;
                         // Add states (cols[1] might be "CA, NY")

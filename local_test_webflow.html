@@ -1,9 +1,19 @@
-<!-- 
-  WEBFLOW INTEGRATION SNIPPET - V5 (URLSearchParams Fix)
-  ------------------------------------------------------
-  1. Add an "Embed" element to your Webflow page.
-  2. Paste this entire code block into the Embed element.
--->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Local Webflow Test</title>
+    <!-- Basic Reset for test page -->
+    <style>
+        body { background-color: #1a1b1e; padding: 20px; font-family: sans-serif; }
+    </style>
+</head>
+<body>
+
+    <!-- 
+      START: Webflow Embed Code
+      (Modified for Localhost Testing)
+    -->
 
 <style>
     :root {
@@ -223,14 +233,14 @@
 
     <!-- Community Alert -->
     <div id="metrc-community-alert">
-        ⚠️ <strong>Community Alert:</strong> <span id="metrc-alert-count">0</span> users have reported downtime in the last 3 hours.
+        ⚠ <strong>Community Alert:</strong> <span id="metrc-alert-count">0</span> users have reported downtime in the last 3 hours.
     </div>
 
     <!-- Reporting Section -->
     <div class="metrc-report-section">
         <div class="metrc-report-header" onclick="toggleMetrcReport()">
             <h3 style="margin:0; color: var(--metrc-text-main);">📢 Report Downtime</h3>
-            <span style="color:var(--metrc-text-muted); font-size: 0.9rem;">Click to expand ▼</span>
+            <span style="color:var(--metrc-text-muted); font-size: 0.9rem;">Click to expand ▾</span>
         </div>
         <div class="metrc-report-content" id="metrc-report-form-container">
             <p style="font-size: 0.9rem; color: var(--metrc-text-muted); margin-bottom: 15px;">
@@ -315,8 +325,8 @@
         });
     }
 
-    // --- REMOTE URL FOR WEBFLOW ---
-    const METRC_STATUS_URL = 'https://adamchu22.github.io/metrc-status-checker-serverless-v2/status.json';
+    // --- LOCAL FILE FOR TESTING ---
+    const METRC_STATUS_URL = 'status.json?ts=' + Date.now();
 
     async function loadMetrcStatus() {
         try {
@@ -420,3 +430,8 @@
 
     loadMetrcStatus();
 </script>
+    
+    <!-- END: Webflow Embed Code -->
+
+</body>
+</html>

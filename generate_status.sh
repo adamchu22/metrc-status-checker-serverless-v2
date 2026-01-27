@@ -77,7 +77,7 @@ echo "Generating snapshot..."
 timestamp=$(date -u +'%Y-%m-%dT%H:%M:%SZ')
 snapshot_file="snapshot.tmp.json"
 
-echo "{"
+echo "{" > $snapshot_file
 echo "  \"timestamp\": \"$timestamp\"," >> $snapshot_file
 echo "  \"user_reports\": $reports_json," >> $snapshot_file
 echo "  \"data\": [" >> $snapshot_file

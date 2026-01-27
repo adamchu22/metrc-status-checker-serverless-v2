@@ -25,7 +25,7 @@ check_endpoint() {
     elif [[ "$code" == "000" ]]; then status="UNREACHABLE";
     else status="ERROR"; fi
     
-    echo ""${type}_code": ""$code"", ""${type}_status": ""$status"""
+    echo "\"${type}_code\": \"$code\", \"${type}_status\": \"$status\""
 }
 
 # --- 1. Fetch User Reports (Google Sheets) ---

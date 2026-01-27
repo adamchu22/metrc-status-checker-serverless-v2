@@ -148,6 +148,13 @@
         border-radius: 20px;
         color: #1a1b1e;
     }
+    
+    .metrc-user-alert-badge {
+        display: inline-block;
+        margin-left: 8px;
+        font-size: 1.2rem;
+        cursor: help;
+    }
 
     /* 7-Day Grid */
     .metrc-history-grid {
@@ -348,6 +355,16 @@
                 const state = item.state;
                 const card = document.createElement('div');
                 card.className = 'metrc-card';
+                
+                // Check if users reported this state
+                const userReported = latest.user_reports && 
+                                     latest.user_reports.states && 
+                                     latest.user_reports.states.includes(state);
+
+                let reportBadge = '';
+                if (userReported) {
+                    reportBadge = `<span class="metrc-user-alert-badge" title="Users reported issues in the last 3 hours">⚠️</span>`;
+                }
 
                 let historyHTML = '<div class="metrc-history-grid">';
                 
@@ -404,7 +421,10 @@
 
                 card.innerHTML = `
                     <div class="metrc-card-header">
-                        <div class="metrc-state-badge">${state}</div>
+                        <div style="display:flex; align-items:center;">
+                            <div class="metrc-state-badge">${state}</div>
+                            ${reportBadge}
+                        </div>
                         <span class="metrc-current-status s-${item.prod_status}">${item.prod_status}</span>
                     </div>
                     ${historyHTML}

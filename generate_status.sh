@@ -48,11 +48,33 @@ if [ -n "$REPORTS_CSV_URL" ]; then
                 let count = 0;
                 let states = new Set();
 
+                // Robust CSV Line Parser
+                function parseLine(text) {
+                    const ret = [];
+                    let p = 0;
+                    let inQuote = false;
+                    let token = "";
+                    for (let i = 0; i < text.length; i++) {
+                        const c = text[i];
+                        if (c === "\"") {
+                            inQuote = !inQuote;
+                        } else if (c === "," && !inQuote) {
+                            ret.push(token);
+                            token = "";
+                        } else {
+                            token += c;
+                        }
+                    }
+                    ret.push(token);
+                    return ret;
+                }
+
                 lines.forEach(line => {
-                    const cols = line.split(","); // Basic CSV split
+                    if (!line.trim()) return;
+                    const cols = parseLine(line); // Use robust parser
                     if (cols.length < 2) return;
                     
-                    const tsStr = cols[0].replace(/"/g, ""); // Timestamp
+                    const tsStr = cols[0].replace(/"/g, ""); 
                     const reportDate = new Date(tsStr);
                     
                     if (!isNaN(reportDate) && reportDate > threeHoursAgo) {

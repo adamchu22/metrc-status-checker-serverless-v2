@@ -14,6 +14,8 @@
             --warning: #fab005;
             --error: #fa5252;
             --border: #2c2e33;
+            --tooltip-bg: #141517;
+            --input-bg: #2c2e33;
         }
 
         body {
@@ -31,15 +33,94 @@
 
         header {
             text-align: center;
-            margin-bottom: 50px;
+            margin-bottom: 30px;
         }
 
         h1 { margin: 0; font-size: 2.5rem; letter-spacing: -1px; }
         .timestamp { color: var(--text-muted); font-size: 0.9rem; margin-top: 10px; }
 
+        /* Community Alert Banner */
+        #community-alert {
+            display: none; /* Hidden by default */
+            background: rgba(250, 82, 82, 0.15);
+            border: 1px solid var(--error);
+            color: #ff8787;
+            padding: 15px;
+            border-radius: 8px;
+            margin-bottom: 30px;
+            text-align: center;
+            font-weight: 500;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0% { box-shadow: 0 0 0 0 rgba(250, 82, 82, 0.2); }
+            70% { box-shadow: 0 0 0 10px rgba(250, 82, 82, 0); }
+            100% { box-shadow: 0 0 0 0 rgba(250, 82, 82, 0); }
+        }
+
+        /* Reporting Section */
+        .report-section {
+            background: var(--card-bg);
+            border: 1px solid var(--border);
+            border-radius: 12px;
+            padding: 20px;
+            margin-bottom: 40px;
+            max-width: 600px;
+            margin-left: auto;
+            margin-right: auto;
+        }
+        
+        .report-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            cursor: pointer;
+        }
+        
+        .report-content {
+            display: none; /* Collapsed by default */
+        }
+        .report-content.open { display: block; }
+
+        .state-selector {
+            display: grid;
+            grid-template-columns: repeat(auto-fill, minmax(60px, 1fr));
+            gap: 8px;
+            max-height: 150px;
+            overflow-y: auto;
+            margin-bottom: 15px;
+            padding: 10px;
+            background: var(--input-bg);
+            border-radius: 6px;
+            border: 1px solid var(--border);
+        }
+
+        .state-checkbox {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            font-size: 0.9rem;
+            cursor: pointer;
+        }
+        
+        .submit-btn {
+            width: 100%;
+            padding: 12px;
+            background: #339af0;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+        .submit-btn:hover { background: #228be6; }
+
         .grid {
             display: grid;
-            grid-template-columns: repeat(auto-fill, minmax(280px, 1fr));
+            grid-template-columns: repeat(auto-fill, minmax(320px, 1fr));
             gap: 20px;
         }
 
@@ -51,15 +132,12 @@
             box-shadow: 0 4px 6px rgba(0,0,0,0.1);
             transition: transform 0.2s;
         }
-        
-        .card:hover { transform: translateY(-5px); }
+        .card:hover { transform: translateY(-2px); }
 
         .card-header {
             display: flex;
             justify-content: space-between;
             align-items: center;
-            border-bottom: 1px solid var(--border);
-            padding-bottom: 10px;
             margin-bottom: 15px;
         }
 
@@ -72,44 +150,73 @@
             border-radius: 8px;
         }
 
-        .env-row {
-            display: flex;
-            justify-content: space-between;
-            align-items: center;
-            margin-bottom: 12px;
-            font-size: 0.95rem;
-        }
-
-        .env-label { color: var(--text-muted); font-weight: 500; }
-
-        .status-pill {
+        .current-status {
+            font-weight: bold;
+            font-size: 0.9rem;
             padding: 4px 12px;
             border-radius: 20px;
-            font-size: 0.8rem;
-            font-weight: bold;
-            text-transform: uppercase;
             color: #1a1b1e;
         }
-        
-        .history-row {
+
+        /* 7-Day Grid */
+        .history-grid {
+            display: grid;
+            grid-template-columns: repeat(7, 1fr);
+            gap: 4px;
             margin-top: 15px;
-            padding-top: 10px;
-            border-top: 1px solid var(--border);
         }
-        .history-label { font-size: 0.75rem; color: var(--text-muted); margin-bottom: 5px; }
-        .history-dots { display: flex; gap: 2px; height: 8px; }
-        .dot { flex: 1; border-radius: 1px; opacity: 0.8; }
+        
+        .day-box-container {
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+        }
+
+        .day-label {
+            font-size: 0.7rem;
+            color: var(--text-muted);
+            margin-bottom: 4px;
+        }
+
+        .day-box {
+            width: 100%;
+            height: 30px;
+            border-radius: 4px;
+            background-color: var(--border);
+            cursor: help;
+            position: relative;
+        }
+
+        .box-success { background-color: var(--success); }
+        .box-warning { background-color: var(--warning); } /* Has incidents */
+
+        /* Tooltip */
+        .day-box:hover::after {
+            content: attr(data-tooltip);
+            position: absolute;
+            bottom: 100%;
+            left: 50%;
+            transform: translateX(-50%);
+            background: var(--tooltip-bg);
+            color: white;
+            padding: 8px 12px;
+            border-radius: 6px;
+            font-size: 0.8rem;
+            white-space: pre-wrap;
+            width: max-content;
+            max-width: 250px;
+            z-index: 100;
+            border: 1px solid var(--border);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.3);
+            pointer-events: none;
+            margin-bottom: 8px;
+        }
 
         /* Status Colors */
         .s-ONLINE { background-color: var(--success); }
         .s-SECURED { background-color: var(--warning); }
         .s-UNREACHABLE { background-color: var(--error); color: white; }
         .s-ERROR { background-color: var(--error); color: white; }
-        
-        .bg-ONLINE { background-color: var(--success); }
-        .bg-SECURED { background-color: var(--warning); }
-        .bg-UNREACHABLE { background-color: var(--error); }
-        .bg-ERROR { background-color: var(--error); }
 
     </style>
 </head>
@@ -121,55 +228,207 @@
         <div class="timestamp" id="last-updated">Checking status...</div>
     </header>
 
-    <div class="grid" id="dashboard">
+    <!-- Community Alert Banner -->
+    <div id="community-alert">
+        ⚠️ <strong>Community Alert:</strong> <span id="alert-count">0</span> users have reported downtime in the last 3 hours.
+    </div>
+
+    <!-- Reporting Section -->
+    <div class="report-section">
+        <div class="report-header" onclick="toggleReport()">
+            <h3 style="margin:0">🚨 Report Downtime</h3>
+            <span style="color:var(--text-muted); font-size: 0.9rem;">Click to expand ▾</span>
         </div>
+        <div class="report-content" id="report-form-container">
+            <p style="font-size: 0.9rem; color: var(--text-muted); margin-bottom: 15px;">
+                Select the affected states. Your report helps others confirm outages.
+            </p>
+            
+            <!-- Hidden iframe for Google Forms (Prevents page redirect) -->
+            <iframe name="hidden_iframe" id="hidden_iframe" style="display:none;" onload="if(submitted) {window.location.reload();}"></iframe>
+            
+            <!-- Form: Action URL will be replaced by user's Google Form URL -->
+            <form id="gform" action="https://docs.google.com/forms/d/e/1FAIpQLSf1x5H9FLTMTgMl1JQZle2avN4Quu5tV-LqqLz_un3qsF1beg/formResponse" method="POST" target="hidden_iframe" onsubmit="submitted=true;">
+                <div class="state-selector" id="state-checkboxes">
+                    <!-- Populated by JS -->
+                </div>
+                
+                <!-- Hidden Input for concatenated states -->
+                <input type="hidden" name="entry.1306210022" id="hidden-states-input">
+                
+                <button type="submit" class="submit-btn" id="submit-btn" onclick="prepareSubmission(event)">Submit Report</button>
+            </form>
+            <div id="report-msg" style="margin-top:10px; text-align:center; font-size:0.9rem;"></div>
+        </div>
+    </div>
+
+    <div class="grid" id="dashboard"></div>
 </div>
 
 <script>
+    const STATES = [
+        "AK", "AL", "CA", "CO", "DC", "GU", "IL", "KY", "LA", "MA", 
+        "MD", "ME", "MI", "MN", "MO", "MS", "MT", "NV", "NY", "OH", 
+        "OK", "OR", "RI", "SD", "VA", "WV"
+    ];
+
+    let submitted = false;
+
+    // --- 1. Populate UI ---
+    const container = document.getElementById('state-checkboxes');
+    STATES.forEach(st => {
+        const label = document.createElement('label');
+        label.className = 'state-checkbox';
+        label.innerHTML = `<input type="checkbox" value="${st}"> ${st}`;
+        container.appendChild(label);
+    });
+
+    function toggleReport() {
+        const content = document.getElementById('report-form-container');
+        content.classList.toggle('open');
+    }
+
+    // --- 2. Google Forms Submission Logic ---
+    function prepareSubmission(e) {
+        // Collect checked states
+        const checked = Array.from(document.querySelectorAll('#state-checkboxes input:checked')).map(cb => cb.value);
+        
+        const msg = document.getElementById('report-msg');
+        
+        if (checked.length === 0) {
+            e.preventDefault();
+            msg.style.color = 'var(--error)';
+            msg.innerText = "Please select at least one state.";
+            return;
+        }
+
+        // Check if Form Configured
+        const form = document.getElementById('gform');
+        if (!form.action) {
+            e.preventDefault();
+            alert("Configuration Required: The site owner needs to add the Google Form Action URL to index.html.");
+            return;
+        }
+
+        // Fill hidden input for Google Forms
+        // Google Forms usually takes a single string. We join with commas.
+        document.getElementById('hidden-states-input').value = checked.join(', ');
+
+        msg.style.color = 'var(--text-muted)';
+        msg.innerText = "Submitting...";
+        
+        // The iframe onload handles the success state
+        setTimeout(() => {
+            msg.style.color = 'var(--success)';
+            msg.innerText = "Report submitted! It will appear in the next 15-minute update.";
+            document.querySelectorAll('#state-checkboxes input').forEach(cb => cb.checked = false);
+        }, 1500);
+    }
+
+    // --- 3. Load Status & Reports ---
     async function loadStatus() {
         try {
             const response = await fetch('status.json');
             const history = await response.json();
             
-            const latest = history[history.length - 1];
-            const grid = document.getElementById('dashboard');
-            
-            if (latest) {
-                const date = new Date(latest.timestamp);
-                document.getElementById('last-updated').innerText = `Last Updated: ${date.toLocaleString()}`;
-                
-                latest.data.forEach(item => {
-                    const card = document.createElement('div');
-                    card.className = 'card';
-                    
-                    const stateHistoryDots = history.map(snapshot => {
-                        const stateRecord = snapshot.data.find(r => r.state === item.state);
-                        const status = stateRecord ? stateRecord.prod_status : 'UNKNOWN';
-                        return `<div class="dot bg-${status}" title="${new Date(snapshot.timestamp).toLocaleString()}: ${status}"></div>`;
-                    }).join('');
+            if (!history || history.length === 0) return;
 
-                    card.innerHTML = `
-                        <div class="card-header">
-                            <div class="state-badge">${item.state}</div>
-                        </div>
-                        
-                        <div class="env-row">
-                            <span class="env-label">Production Status</span>
-                            <span class="status-pill s-${item.prod_status}">${item.prod_status}</span>
-                        </div>
-                        
-                        <div class="history-row">
-                            <div class="history-label">30-Day History (8x Daily)</div>
-                            <div class="history-dots">${stateHistoryDots}</div>
-                        </div>
-                    `;
-                    grid.appendChild(card);
-                });
+            const latest = history[history.length - 1];
+            
+            // Render Last Updated
+            const date = new Date(latest.timestamp);
+            document.getElementById('last-updated').innerText = `Last Updated: ${date.toLocaleString()}`;
+
+            // --- Community Alert Logic ---
+            if (latest.user_reports && latest.user_reports.count > 0) {
+                document.getElementById('community-alert').style.display = 'block';
+                document.getElementById('alert-count').innerText = latest.user_reports.count;
             }
 
+            // --- Dashboard Render Logic (Same as before) ---
+            const grid = document.getElementById('dashboard');
+            grid.innerHTML = '';
+
+            const days = [];
+            for (let i = 6; i >= 0; i--) {
+                const d = new Date();
+                d.setDate(d.getDate() - i);
+                days.push(d.toISOString().split('T')[0]);
+            }
+
+            latest.data.forEach(item => {
+                const state = item.state;
+                const card = document.createElement('div');
+                card.className = 'card';
+
+                let historyHTML = '<div class="history-grid">';
+                
+                days.forEach(dayKey => {
+                    const daySnaps = history.filter(h => h.timestamp.startsWith(dayKey));
+                    let hasIncident = false;
+                    let incidents = [];
+                    let currentIncident = null;
+
+                    const stateSnaps = daySnaps.map(snap => {
+                        const rec = snap.data.find(r => r.state === state);
+                        return { ts: snap.timestamp, status: rec ? rec.prod_status : 'UNKNOWN' };
+                    });
+
+                    stateSnaps.forEach((snap, idx) => {
+                        const isDown = snap.status !== 'ONLINE' && snap.status !== 'SECURED' && snap.status !== 'UNKNOWN';
+                        if (isDown) {
+                            if (!currentIncident) currentIncident = { start: snap.ts, end: null };
+                        } else {
+                            if (currentIncident) {
+                                currentIncident.end = snap.ts;
+                                incidents.push(currentIncident);
+                                currentIncident = null;
+                            }
+                        }
+                        if (idx === stateSnaps.length - 1 && currentIncident) incidents.push(currentIncident);
+                    });
+
+                    if (incidents.length > 0) hasIncident = true;
+
+                    let tooltip = "No incidents";
+                    if (hasIncident) {
+                        tooltip = incidents.map(inc => {
+                            const start = new Date(inc.start).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'});
+                            const end = inc.end ? new Date(inc.end).toLocaleTimeString([], {hour: '2-digit', minute:'2-digit'}) : "Ongoing";
+                            let duration = inc.end ? Math.round((new Date(inc.end) - new Date(inc.start))/60000) + " min" : Math.round((new Date() - new Date(inc.start))/60000) + "+ min";
+                            return `Failed: ${start}\nUp: ${end}\nDuration: ${duration}`;
+                        }).join('\n\n');
+                    } else if (stateSnaps.length === 0) {
+                        tooltip = "No data";
+                    }
+
+                    const dateObj = new Date(dayKey);
+                    const userDate = new Date(dateObj.valueOf() + dateObj.getTimezoneOffset() * 60000);
+                    const dayLabel = userDate.toLocaleDateString('en-US', { weekday: 'short' });
+                    const boxClass = hasIncident ? 'box-warning' : (stateSnaps.length > 0 ? 'box-success' : '');
+
+                    historyHTML += `
+                        <div class="day-box-container">
+                            <span class="day-label">${dayLabel}</span>
+                            <div class="day-box ${boxClass}" data-tooltip="${tooltip}"></div>
+                        </div>
+                    `;
+                });
+                historyHTML += '</div>';
+
+                card.innerHTML = `
+                    <div class="card-header">
+                        <div class="state-badge">${state}</div>
+                        <span class="current-status s-${item.prod_status}">${item.prod_status}</span>
+                    </div>
+                    ${historyHTML}
+                `;
+                grid.appendChild(card);
+            });
+
         } catch (error) {
-            document.getElementById('last-updated').innerText = "Failed to load status.json";
             console.error(error);
+            document.getElementById('last-updated').innerText = "Error loading status data.";
         }
     }
 
